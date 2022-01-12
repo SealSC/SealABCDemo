@@ -31,6 +31,8 @@ import (
 	"strconv"
 	"github.com/SealSC/SealABC/crypto/hashes/sha3"
 	"github.com/SealSC/SealABC/crypto/ciphers/aes"
+	"github.com/SealSC/SealABC/metadata/blockchainRequest"
+	"github.com/SealSC/SealABC/metadata/applicationResult"
 )
 
 var pkList = []pk{
@@ -67,6 +69,12 @@ type pk struct {
 	pub string
 }
 type a2 struct{}
+
+func (a a2) FormatResult(req blockchainRequest.Entity) (result applicationResult.Entity, err error) {
+	result.Data = req.Data
+	result.Seal = &req.Seal
+	return
+}
 
 func (a a2) Name() string {
 	return "001"
