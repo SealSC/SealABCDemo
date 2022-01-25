@@ -33,6 +33,12 @@ import (
 	"github.com/SealSC/SealABC/crypto/ciphers/aes"
 	"github.com/SealSC/SealABC/metadata/blockchainRequest"
 	"github.com/SealSC/SealABC/metadata/applicationResult"
+	"crypto/tls"
+	http2 "net/http"
+	"mime"
+	"io/ioutil"
+	"crypto/sha1"
+	"errors"
 )
 
 var pkList = []pk{
@@ -68,20 +74,51 @@ type pk struct {
 	pk  string
 	pub string
 }
+
+type a3 struct{}
+
+func (a a3) VerifyReq(r blockchainRequest.Entity) error                     { return nil }
+func (a a3) Name() string                                                   { return "120" }
+func (a a3) FormatResult(req blockchainRequest.Entity) (interface{}, error) { return req.Data, nil }
+func (a a3) CronPaths() []string                                            { return []string{"0 0/1 * * * *"} }
+
+func sha1Hash(b []byte) []byte {
+	hash := sha1.New()
+	_, err := hash.Write(b)
+	if err != nil {
+		panic(err)
+	}
+	return hash.Sum(nil)
+}
+
+func (a a3) VerifyRemoteResp(response *http2.Response) (blockchainRequest.Entity, error) {
+	var result blockchainRequest.Entity
+	if response.StatusCode != http2.StatusOK {
+		return result, errors.New(response.Status)
+	}
+	all, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return result, err
+	}
+	result.Data = all
+	result.Seal.Hash = sha1Hash(all)
+	return result, nil
+}
+
+func (a a3) VerifyRemoteCA(state tls.ConnectionState) error { return nil }
+
+func (a a3) UrlContentType() (string, string) {
+	return "http://127.0.0.1:8888/now", mime.TypeByExtension(".json")
+}
+
 type a2 struct{}
 
+func (a a2) Name() string                             { return "001" }
+func (a a2) VerifyReq(blockchainRequest.Entity) error { return nil }
 func (a a2) FormatResult(req blockchainRequest.Entity) (result applicationResult.Entity, err error) {
 	result.Data = req.Data
 	result.Seal = &req.Seal
 	return
-}
-
-func (a a2) Name() string {
-	return "001"
-}
-
-func (a a2) VerifyReq(req []byte) error {
-	return nil
 }
 
 func main() {
@@ -129,9 +166,12 @@ func main() {
 	}
 
 	pri := ed25519Pri(pkList[atoi].pk)
-	oracleApplication := oracleInterface.NewOracleApplication(20, time.Second*30, sqlDriver)
-	var ss oracleInterface.Action = a2{}
-	oracleApplication.RegFunction(ss)
+	oracleApplication := oracleInterface.NewOracleApplication(time.Second*30, sqlDriver, driver)
+
+	err = oracleApplication.RegFunction(a3{})
+	if err != nil {
+		panic(err)
+	}
 	config := engineStartup.Config{
 		Api: engineApi.Config{
 			HttpJSON: http.Config{
