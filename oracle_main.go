@@ -77,7 +77,7 @@ type pk struct {
 
 type a3 struct{}
 
-func (a a3) VerifyReq(r blockchainRequest.Entity) error                     { return nil }
+func (a a3) VerifyReq(blockchainRequest.Entity) error                       { return nil }
 func (a a3) Name() string                                                   { return "120" }
 func (a a3) FormatResult(req blockchainRequest.Entity) (interface{}, error) { return req.Data, nil }
 func (a a3) CronPaths() []string                                            { return []string{"0 0/1 * * * *"} }
@@ -129,10 +129,10 @@ func main() {
 	if atoi > 4 || atoi < 0 {
 		return
 	}
-	var ConsensusNetworkAddr = 9080
-	var P2PNetworkAddr = 9090
-	var engineApiAddr = 8090
-	var APIAddr = 8080
+	var ConsensusNetworkPort = 9080
+	var P2PNetworkPort = 9090
+	var engineApiPort = 8090
+	var APIPort = 8080
 
 	var name = fmt.Sprintf("0x%d", atoi)
 	var members []hotStuff.Member
@@ -143,8 +143,8 @@ func main() {
 			continue
 		}
 		members = append(members, hotStuff.Member{Signer: ed25519Pub(p.pub)})
-		P2PSeeds = append(P2PSeeds, fmt.Sprintf("127.0.0.1:%d", P2PNetworkAddr+i))
-		ConsensusP2PSeeds = append(ConsensusP2PSeeds, fmt.Sprintf("127.0.0.1:%d", ConsensusNetworkAddr+i))
+		P2PSeeds = append(P2PSeeds, fmt.Sprintf("127.0.0.1:%d", P2PNetworkPort+i))
+		ConsensusP2PSeeds = append(ConsensusP2PSeeds, fmt.Sprintf("127.0.0.1:%d", ConsensusNetworkPort+i))
 	}
 
 	sqlDriver, err := db.NewSimpleSQLDatabaseDriver("MySQL", simpleMysql.Config{
@@ -175,7 +175,7 @@ func main() {
 	config := engineStartup.Config{
 		Api: engineApi.Config{
 			HttpJSON: http.Config{
-				Address:        fmt.Sprintf(":%d", engineApiAddr+atoi),
+				Address:        fmt.Sprintf(":%d", engineApiPort+atoi),
 				BasePath:       "",
 				EnableTLS:      false,
 				AllowCORS:      false,
@@ -197,7 +197,7 @@ func main() {
 			ID:              pri.PublicKeyString(),
 			ClientOnly:      false,
 			ServiceProtocol: "tcp",
-			ServiceAddress:  fmt.Sprintf(":%d", ConsensusNetworkAddr+atoi),
+			ServiceAddress:  fmt.Sprintf(":%d", ConsensusNetworkPort+atoi),
 			P2PSeeds:        ConsensusP2PSeeds,
 			Topology:        fullyConnect.NewTopology(),
 			Router:          nil,
@@ -232,14 +232,14 @@ func main() {
 					ID:              pri.PrivateKeyString(),
 					ClientOnly:      false,
 					ServiceProtocol: "tcp",
-					ServiceAddress:  fmt.Sprintf(":%d", P2PNetworkAddr+atoi),
+					ServiceAddress:  fmt.Sprintf(":%d", P2PNetworkPort+atoi),
 					P2PSeeds:        P2PSeeds,
 					Topology:        fullyConnect.NewTopology(),
 					Router:          nil,
 				},
 				Api: chainApi.Config{
 					HttpJSON: http.Config{
-						Address:        fmt.Sprintf(":%d", APIAddr+atoi),
+						Address:        fmt.Sprintf(":%d", APIPort+atoi),
 						BasePath:       "",
 						EnableTLS:      false,
 						AllowCORS:      false,
